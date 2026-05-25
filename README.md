@@ -416,3 +416,7 @@ Projeto desenvolvido para estudos de:
 - Node-RED;
 - Oracle Database;
 - integração entre hardware e software.
+
+---
+
+#### [Video no youtube](https://youtu.be/CoorQwypCCo)

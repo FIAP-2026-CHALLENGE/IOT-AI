@@ -1,16 +1,10 @@
 #include "HX711.h"
 
-// ============================
-// PINOS HX711
-// ============================
 #define DT  4
 #define SCK 5
 
 HX711 scale;
 
-// ============================
-// NOMES DOS ANIMAIS
-// ============================
 String animalNames[6] = {
   "Jake",
   "Max",
@@ -20,81 +14,42 @@ String animalNames[6] = {
   "Mel"
 };
 
-// ============================
-// FATOR DE CALIBRAÇÃO
-// ============================
-//
-// VOCÊ PRECISA AJUSTAR ESSE VALOR
-// conforme sua célula de carga.
-//
-// Exemplo:
-// -7050
-// 2280
-// -430
-//
-float calibration_factor = 0.0;
-
-// ============================
+// valor comum no Wokwi
+float calibration_factor = 422.0;
 
 void setup() {
   Serial.begin(115200);
 
   Serial.println("Inicializando HX711...");
 
-  // Inicializa HX711
   scale.begin(DT, SCK);
 
-  // Define fator de calibração
-  scale.set_scale(calibration_factor);
-
-  // Zera balança
+  // PRIMEIRO zera
   scale.tare();
 
-  Serial.println("HX711 iniciado com sucesso!");
-  Serial.println("Balança zerada!");
+  // DEPOIS aplica escala
+  scale.set_scale(calibration_factor);
 
-  randomSeed(millis());
+  Serial.println("HX711 iniciado!");
 }
 
 void loop() {
 
-  // ============================
-  // LEITURA DO PESO
-  // ============================
-
-  // Média de 10 leituras
+  // leitura média
   float weight = scale.get_units(10);
 
-  // Evita negativos pequenos
+  // remove negativos pequenos
   if (weight < 0) {
     weight = 0;
   }
 
-  // ============================
-  // NOME ALEATÓRIO
-  // ============================
-
   int randomIndex = random(0, 6);
 
-  String animalName = animalNames[randomIndex];
-
-  // ============================
-  // PAYLOAD
-  // ============================
-
-  // Formato:
-  // peso,nome
-  //
-  // Exemplo:
-  // 10.5,Jake
-
-  String payload = String(weight, 1) + "," + animalName;
-
-  // ============================
-  // ENVIO SERIAL
-  // ============================
+  String payload =
+    String(weight, 1) + "," +
+    animalNames[randomIndex];
 
   Serial.println(payload);
 
-  delay(5000);
+  delay(2000);
 }
