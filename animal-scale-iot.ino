@@ -1,9 +1,16 @@
-#include <Wire.h>
-#include <Adafruit_BMP085.h>
+#include "HX711.h"
 
-Adafruit_BMP085 bmp;
+// ============================
+// PINOS HX711
+// ============================
+#define DT  4
+#define SCK 5
 
-// Lista de nomes dos animais
+HX711 scale;
+
+// ============================
+// NOMES DOS ANIMAIS
+// ============================
 String animalNames[6] = {
   "Jake",
   "Max",
@@ -13,56 +20,80 @@ String animalNames[6] = {
   "Mel"
 };
 
+// ============================
+// FATOR DE CALIBRAÇÃO
+// ============================
+//
+// VOCÊ PRECISA AJUSTAR ESSE VALOR
+// conforme sua célula de carga.
+//
+// Exemplo:
+// -7050
+// 2280
+// -430
+//
+float calibration_factor = 0.0;
+
+// ============================
+
 void setup() {
   Serial.begin(115200);
 
-  // Inicializa I2C
-  Wire.begin(21, 22);
+  Serial.println("Inicializando HX711...");
 
-  // Inicializa BMP180
-  if (!bmp.begin()) {
-    Serial.println("BMP180 nao encontrado!");
-    
-    while (1) {
-      delay(1000);
-    }
-  }
+  // Inicializa HX711
+  scale.begin(DT, SCK);
 
-  Serial.println("BMP180 iniciado com sucesso!");
-  
-  // Gera números aleatórios
+  // Define fator de calibração
+  scale.set_scale(calibration_factor);
+
+  // Zera balança
+  scale.tare();
+
+  Serial.println("HX711 iniciado com sucesso!");
+  Serial.println("Balança zerada!");
+
   randomSeed(millis());
 }
 
 void loop() {
 
-  // Leitura da pressão
-  float pressure = bmp.readPressure();
+  // ============================
+  // LEITURA DO PESO
+  // ============================
 
-  /*
-    Exemplo de conversão fictícia:
-    Aqui estamos apenas simulando um peso.
-  */
+  // Média de 10 leituras
+  float weight = scale.get_units(10);
 
-  float weight = (pressure / 10000.0);
-
-  // Limita para algo mais realista
-  weight = weight - 90;
-
-  if (weight < 1) {
-    weight = random(1, 15);
+  // Evita negativos pequenos
+  if (weight < 0) {
+    weight = 0;
   }
 
-  // Escolhe nome aleatório
+  // ============================
+  // NOME ALEATÓRIO
+  // ============================
+
   int randomIndex = random(0, 6);
 
   String animalName = animalNames[randomIndex];
 
+  // ============================
+  // PAYLOAD
+  // ============================
+
   // Formato:
-  // numero,nomeDoAnimal
+  // peso,nome
+  //
+  // Exemplo:
+  // 10.5,Jake
+
   String payload = String(weight, 1) + "," + animalName;
 
-  // Envia pela Serial
+  // ============================
+  // ENVIO SERIAL
+  // ============================
+
   Serial.println(payload);
 
   delay(5000);

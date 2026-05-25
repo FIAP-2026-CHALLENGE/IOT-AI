@@ -1,34 +1,40 @@
-# Sistema de Monitoramento de Peso Animal com ESP32, MQTT, Node-RED e Oracle
+# Sistema IoT de Pesagem Animal com ESP32, HX711, MQTT, Node-RED e Oracle
 
 ## 📖 Sobre o Projeto
 
-Este projeto simula um sistema IoT para monitoramento de peso de animais utilizando um ESP32 e um sensor BMP180.
+Este projeto consiste em um sistema IoT para monitoramento de peso animal utilizando:
 
-O ESP32 realiza leituras do sensor, gera um valor fictício de peso e associa aleatoriamente um nome de animal.  
-Os dados são enviados via MQTT no formato:
+- ESP32;
+- Sensor HX711;
+- Célula de carga de 50kg;
+- MQTT;
+- Node-RED;
+- Oracle Database.
 
-```txt
-10.5,Jake
-```
-
-O fluxo no Node-RED:
-1. Recebe os dados MQTT;
-2. Trata as informações;
-3. Exibe os dados em dashboard;
-4. Salva automaticamente no banco Oracle.
+O sistema realiza:
+1. leitura do peso do animal através da célula de carga;
+2. geração de um nome aleatório para simular diferentes animais;
+3. envio dos dados via MQTT;
+4. processamento dos dados no Node-RED;
+5. armazenamento automático no banco Oracle;
+6. visualização em dashboard em tempo real.
 
 ---
 
-# 🧠 Arquitetura do Projeto
+# 🧠 Arquitetura do Sistema
 
 ```txt
-ESP32 + BMP180
-       ↓
-     MQTT
-       ↓
-   Node-RED
-       ↓
- Dashboard + Oracle Database
+Célula de Carga
+        ↓
+      HX711
+        ↓
+      ESP32
+        ↓
+      MQTT
+        ↓
+    Node-RED
+        ↓
+Dashboard + Oracle Database
 ```
 
 ---
@@ -37,7 +43,8 @@ ESP32 + BMP180
 
 ## Hardware
 - ESP32
-- BMP180
+- HX711
+- Célula de carga 50kg
 
 ## Software
 - Arduino IDE
@@ -47,9 +54,9 @@ ESP32 + BMP180
 
 ---
 
-# 📦 Estrutura dos Dados
+# 📦 Formato dos Dados
 
-Os dados são enviados no formato:
+Os dados enviados seguem o padrão:
 
 ```txt
 peso,nomeDoAnimal
@@ -63,56 +70,80 @@ Exemplo:
 
 ---
 
-# ⚠️ Observação Importante
+# 🔌 Ligações HX711 → ESP32
 
-O BMP180 NÃO mede peso real.
-
-Ele é um sensor de:
-- pressão atmosférica;
-- altitude;
-- temperatura.
-
-Neste projeto ele é utilizado apenas para fins acadêmicos/simulados.
-
-Para medição real de peso, o ideal seria utilizar:
-- célula de carga;
-- módulo HX711.
-
----
-
-# 🔌 Ligações do BMP180 no ESP32
-
-| BMP180 | ESP32 |
+| HX711 | ESP32 |
 |---|---|
 | VCC | 3.3V |
 | GND | GND |
-| SDA | GPIO 21 |
-| SCL | GPIO 22 |
+| DT | GPIO 4 |
+| SCK | GPIO 5 |
+
+---
+
+# 📚 Bibliotecas Necessárias
+
+Instalar na Arduino IDE:
+
+- HX711 Library (Bogde)
 
 ---
 
 # 🚀 Como Executar o Projeto
 
-# 1️⃣ Configurar o Arduino IDE
+# 1️⃣ Configurar Arduino IDE
 
-Instale:
-- ESP32 Board Package
-- Biblioteca Adafruit BMP085
-- Biblioteca Adafruit Unified Sensor
+## Instalar ESP32 Board
+
+Na Arduino IDE:
+1. Abra:
+   - Arquivo → Preferências
+2. Adicione:
+   
+```txt
+https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+```
+
+3. Vá em:
+   - Ferramentas → Placa → Gerenciador de Placas
+4. Instale:
+   - ESP32 by Espressif Systems
 
 ---
 
-# 2️⃣ Código do ESP32
+# 2️⃣ Instalar Biblioteca HX711
+
+Na Arduino IDE:
+1. Sketch → Incluir Biblioteca → Gerenciar Bibliotecas
+2. Pesquise:
+   
+```txt
+HX711
+```
+
+3. Instale:
+- HX711 by Bogde
+
+---
+
+# 3️⃣ Código do ESP32
 
 ## 📄 main.ino
 
 ```cpp
-#include <Wire.h>
-#include <Adafruit_BMP085.h>
+#include "HX711.h"
 
-Adafruit_BMP085 bmp;
+// ============================
+// PINOS HX711
+// ============================
+#define DT  4
+#define SCK 5
 
-// Lista de nomes dos animais
+HX711 scale;
+
+// ============================
+// NOMES DOS ANIMAIS
+// ============================
 String animalNames[6] = {
   "Jake",
   "Max",
@@ -122,56 +153,75 @@ String animalNames[6] = {
   "Mel"
 };
 
+// ============================
+// FATOR DE CALIBRAÇÃO
+// ============================
+//
+// VOCÊ PRECISA AJUSTAR ESSE VALOR
+// conforme sua célula de carga.
+//
+float calibration_factor = 0.0;
+
+// ============================
+
 void setup() {
   Serial.begin(115200);
 
-  // Inicializa I2C
-  Wire.begin(21, 22);
+  Serial.println("Inicializando HX711...");
 
-  // Inicializa BMP180
-  if (!bmp.begin()) {
-    Serial.println("BMP180 nao encontrado!");
-    
-    while (1) {
-      delay(1000);
-    }
-  }
+  // Inicializa HX711
+  scale.begin(DT, SCK);
 
-  Serial.println("BMP180 iniciado com sucesso!");
-  
-  // Gera números aleatórios
+  // Define fator de calibração
+  scale.set_scale(calibration_factor);
+
+  // Zera balança
+  scale.tare();
+
+  Serial.println("HX711 iniciado com sucesso!");
+  Serial.println("Balança zerada!");
+
   randomSeed(millis());
 }
 
 void loop() {
 
-  // Leitura da pressão
-  float pressure = bmp.readPressure();
+  // ============================
+  // LEITURA DO PESO
+  // ============================
 
-  /*
-    Exemplo de conversão fictícia:
-    Aqui estamos apenas simulando um peso.
-  */
+  // Média de 10 leituras
+  float weight = scale.get_units(10);
 
-  float weight = (pressure / 10000.0);
-
-  // Limita para algo mais realista
-  weight = weight - 90;
-
-  if (weight < 1) {
-    weight = random(1, 15);
+  // Evita negativos pequenos
+  if (weight < 0) {
+    weight = 0;
   }
 
-  // Escolhe nome aleatório
+  // ============================
+  // NOME ALEATÓRIO
+  // ============================
+
   int randomIndex = random(0, 6);
 
   String animalName = animalNames[randomIndex];
 
+  // ============================
+  // PAYLOAD
+  // ============================
+
   // Formato:
-  // numero,nomeDoAnimal
+  // peso,nome
+  //
+  // Exemplo:
+  // 10.5,Jake
+
   String payload = String(weight, 1) + "," + animalName;
 
-  // Envia pela Serial
+  // ============================
+  // ENVIO SERIAL
+  // ============================
+
   Serial.println(payload);
 
   delay(5000);
@@ -180,55 +230,86 @@ void loop() {
 
 ---
 
-# 3️⃣ Configurar o MQTT (HiveMQ)
+# ⚖️ Calibrando a Célula de Carga
 
-Criar conta em:
-- HiveMQ Cloud
+O valor:
 
-Criar:
-- Cluster MQTT;
-- Usuário;
-- Senha.
+```cpp
+float calibration_factor = 0.0;
+```
 
-Configurar no ESP32 e no Node-RED.
+precisa ser ajustado conforme sua célula de carga.
+
+## Processo de calibração
+
+1. Execute o código;
+2. Abra o Serial Monitor;
+3. Coloque um peso conhecido sobre a balança;
+4. Ajuste o valor do `calibration_factor` até a leitura ficar correta.
+
+Exemplo:
+
+```cpp
+float calibration_factor = -7050.0;
+```
+
+ou:
+
+```cpp
+float calibration_factor = 2280.0;
+```
+
+O valor varia conforme:
+- célula de carga;
+- montagem física;
+- orientação dos fios.
 
 ---
 
-# 4️⃣ Configurar o Node-RED
+# 4️⃣ Configurar o MQTT (HiveMQ)
 
-## 📥 Importar o fluxo JSON
+Criar conta no HiveMQ Cloud.
 
-No Node-RED:
-1. Menu;
-2. Import;
-3. Cole o JSON do fluxo;
-4. Deploy.
+Configurar:
+- cluster MQTT;
+- usuário;
+- senha.
+
+Utilizar as mesmas credenciais:
+- no ESP32;
+- no Node-RED.
+
+---
+
+# 5️⃣ Configurar o Node-RED
+
+## Importar o fluxo JSON
+
+1. Abra o Node-RED;
+2. Clique no menu;
+3. Import;
+4. Cole o JSON do fluxo;
+5. Deploy.
 
 ---
 
 # 🔄 Funcionamento do Fluxo
 
 ## MQTT IN
+
 Recebe os dados enviados pelo ESP32.
 
----
-
-## Function
-
-Transforma:
+Exemplo recebido:
 
 ```txt
 10.5,Jake
 ```
 
-em:
+---
 
-```json
-{
-  "READING": 10.5,
-  "ANIMAL": "Jake"
-}
-```
+## Function
+
+Transforma os dados em objeto JSON.
 
 Código:
 
@@ -243,11 +324,20 @@ msg.payload = {
 return msg;
 ```
 
+Resultado:
+
+```json
+{
+  "READING": 10.5,
+  "ANIMAL": "Jake"
+}
+```
+
 ---
 
 ## OracleDB
 
-Executa o INSERT:
+O Node-RED executa automaticamente:
 
 ```sql
 INSERT INTO T_EXAM_READING
@@ -255,15 +345,6 @@ INSERT INTO T_EXAM_READING
 VALUES
 (:READING, :ANIMAL, SYSDATE)
 ```
-
----
-
-## Dashboard
-
-O Node-RED também exibe:
-- gráfico em tempo real;
-- gauge;
-- debug das mensagens.
 
 ---
 
@@ -280,7 +361,17 @@ CREATE TABLE T_EXAM_READING (
 
 ---
 
-# 📊 Exemplo de Fluxo Completo
+# 📊 Dashboard
+
+O dashboard do Node-RED exibe:
+- gráfico em tempo real;
+- gauge de peso;
+- debug das mensagens;
+- retorno Oracle.
+
+---
+
+# 📈 Exemplo de Fluxo Completo
 
 ## ESP32 envia:
 
@@ -308,18 +399,20 @@ CREATE TABLE T_EXAM_READING (
 # ✅ Resultado Final
 
 O sistema permite:
-- leitura automática de sensores;
-- envio de dados via MQTT;
-- processamento em Node-RED;
+- monitoramento automático de peso;
+- integração IoT com MQTT;
+- processamento em tempo real;
 - visualização em dashboard;
-- persistência em banco Oracle.
+- persistência em Oracle Database.
 
 ---
 
-# 👨‍💻 Autor
+# 👨‍💻 Objetivo Acadêmico
 
-Projeto desenvolvido para fins acadêmicos e estudos de IoT com:
-- ESP32;
+Projeto desenvolvido para estudos de:
+- IoT;
+- sensores;
 - MQTT;
 - Node-RED;
-- Oracle Database.
+- Oracle Database;
+- integração entre hardware e software.
