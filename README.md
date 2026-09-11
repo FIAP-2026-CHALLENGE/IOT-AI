@@ -419,4 +419,112 @@ Projeto desenvolvido para estudos de:
 
 ---
 
+---
+
+# 🤖 Componente de IA (Sprint 3 — Disruptive Architectures: IoT, IoB & Generative IA)
+
+> Esta seção documenta a definição do componente de IA que será integrado à solução. A Sprint 3 é uma etapa de definição/documentação; a implementação acontece na Sprint 4.
+
+## Problema de negócio
+
+O tutor do animal frequentemente não sabe interpretar sinais do próprio pet — perda ou ganho de peso, uma mancha na pele, mudança de comportamento, falta de apetite — e não tem clareza se aquilo exige atenção imediata, acompanhamento, ou é irrelevante.
+
+A IA funciona como uma **camada de triagem contínua**: cruza o sinal (automático, vindo do sensor de peso, ou relatado manualmente pelo tutor em texto ou foto) com o histórico do animal e com conhecimento veterinário de referência, e devolve uma recomendação de ação. É um único motor de decisão com múltiplas entradas, não funcionalidades paralelas.
+
+**Escopo inicial de espécies:** cão e gato.
+
+## Abordagem de IA e justificativa técnica
+
+| Tipo de sinal | Técnica | Por quê |
+|---|---|---|
+| Peso (dado numérico, já coletado pelo sensor) | Motor de regras inteligentes / classificação leve | Dado estruturado já existente; não exige dataset de treino |
+| Relato do tutor em texto livre (ex: "não está comendo direito") | NLP via LLM | Texto variado, sem base rotulada disponível para treinar um classificador do zero |
+| Foto de sintoma (ex: mancha na pele) | Visão computacional via **LLM multimodal** | A foto é enviada direto pro mesmo LLM, que já interpreta imagem nativamente — evita treinar e manter um classificador de imagem próprio |
+| Cuidados/vacinas por espécie e raça | Base de conhecimento curada + LLM (RAG simples) | Conhecimento veterinário estruturado como contexto evita que o LLM "alucine" recomendações erradas |
+
+O LLM atua como **camada de orquestração**: recebe o resultado da regra de peso (se aplicável), o texto do tutor, a foto do sintoma (quando enviada) e o trecho relevante da base de cuidados, e devolve uma única recomendação coerente.
+
+## Dados necessários
+
+Evolução do schema Oracle atual (hoje `T_EXAM_READING` guarda o nome do animal como texto solto):
+
+```sql
+CREATE TABLE T_ANIMAL (
+    ID          NUMBER GENERATED ALWAYS AS IDENTITY,
+    NAME        VARCHAR2(100),
+    SPECIES     VARCHAR2(20),   -- CACHORRO | GATO
+    BREED       VARCHAR2(100),
+    BIRTH_DATE  DATE
+);
+
+-- evolução da tabela atual: ANIMAL (texto) vira ANIMAL_ID (FK)
+CREATE TABLE T_EXAM_READING (
+    ID         NUMBER GENERATED ALWAYS AS IDENTITY,
+    ANIMAL_ID  NUMBER REFERENCES T_ANIMAL(ID),
+    READING    NUMBER(10,2),
+    DATETIME   DATE
+);
+
+CREATE TABLE T_TUTOR_REPORT (
+    ID           NUMBER GENERATED ALWAYS AS IDENTITY,
+    ANIMAL_ID    NUMBER REFERENCES T_ANIMAL(ID),
+    REPORT_TEXT  VARCHAR2(2000),  -- nullable, quando o relato for só foto
+    IMAGE_URL    VARCHAR2(500),   -- nullable, link pro storage externo (a imagem NÃO fica no Oracle)
+    REPORT_DATE  DATE
+);
+
+CREATE TABLE T_BREED_CARE (
+    ID               NUMBER GENERATED ALWAYS AS IDENTITY,
+    SPECIES          VARCHAR2(20),
+    BREED            VARCHAR2(100),
+    MIN_WEIGHT       NUMBER(10,2),
+    MAX_WEIGHT       NUMBER(10,2),
+    VACCINE_SCHEDULE CLOB,
+    CARE_NOTES       CLOB
+);
+
+CREATE TABLE T_AI_RECOMMENDATION (
+    ID                    NUMBER GENERATED ALWAYS AS IDENTITY,
+    ANIMAL_ID             NUMBER REFERENCES T_ANIMAL(ID),
+    SOURCE                VARCHAR2(20),   -- PESO | RELATO | CUIDADO_RACA
+    RECOMMENDATION_TEXT   CLOB,
+    CREATED_AT            DATE
+);
+```
+
+`T_AI_RECOMMENDATION` não é exigida pelo enunciado, mas registra toda recomendação gerada pela IA para fins de rastreabilidade/auditoria.
+
+## Arquitetura do componente de IA
+
+![Diagrama de arquitetura do componente de IA](docs/diagrama-arquitetura-ia.png)
+
+<details>
+<summary>Versão em texto do diagrama</summary>
+
+```
+ [Oracle DB]    [App do tutor]   [Base de raças]   [Storage externo]
+ Peso por        Relato em        Peso ideal e      Foto do sintoma
+ animal          texto            vacinas           (link no Oracle)
+     \                |                |                 /
+      \               |                |                /
+       \              v                v               /
+        --------->  [Serviço de IA]  <---------------
+                Regras + classificação + LLM multimodal
+                              |
+                              v
+                       [App do tutor]
+                    Recomendação e alertas
+                              |
+                              v
+                (grava em T_AI_RECOMMENDATION)
+```
+</details>
+
+- As quatro fontes (peso do sensor, relato do tutor, base de raças, foto do sintoma) alimentam o Serviço de IA.
+- A foto vai para um storage externo (ex: S3/bucket); o Oracle guarda só o link (`T_TUTOR_REPORT.IMAGE_URL`).
+- O Serviço de IA devolve a recomendação para o mesmo app do tutor — ponto de entrada e de saída.
+- Toda recomendação é registrada no Oracle para auditoria futura.
+
+---
+
 #### [Video no youtube](https://youtu.be/CoorQwypCCo)
