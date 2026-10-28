@@ -1,0 +1,27 @@
+# Segredos (o .env.example continua versionado)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node-RED local
+.node-red/
+node_modules/
+
+# Dados locais e uploads de teste
+data/local/
+uploads/
+
+# Editor e sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
