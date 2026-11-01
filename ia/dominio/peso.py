@@ -10,6 +10,8 @@ from enum import IntEnum
 LIMITE_ATENCAO = Decimal("5")  # variação acima de 5% pede atenção
 LIMITE_ALERTA = Decimal("10")  # variação acima de 10% é alerta
 LEITURAS_DE_REFERENCIA = 5  # a referência é a média das últimas 5 leituras
+MEDIA_DAS_LEITURAS = f"à média das últimas {LEITURAS_DE_REFERENCIA} leituras"
+PESO_DO_CADASTRO = "ao peso do cadastro"
 
 
 class Nivel(IntEnum):
@@ -49,11 +51,13 @@ def avaliar_peso(
     peso: Decimal,
     faixa: FaixaPeso | None,
     historico: list[Decimal],
+    peso_cadastro: Decimal | None = None,
 ) -> ResultadoPeso:
     """Classifica uma leitura de peso.
 
     `historico` traz as leituras anteriores do animal, da mais antiga para a mais recente.
     `faixa` é None quando a raça não está na base de cuidados.
+    `peso_cadastro` (T_CP_ANIMAIS.WEIGHT) é a referência da primeira pesagem, quando ainda não há histórico.
     """
     if peso <= 0:
         raise LeituraInvalidaError(f"Peso inválido: {peso} kg.")
@@ -66,11 +70,23 @@ def avaliar_peso(
     else:
         problemas.extend(_checar_faixa(peso, faixa))
 
-    variacao = _variacao_percentual(peso, historico)
-    if variacao is None:
-        observacoes.append("Primeira leitura: sem histórico para comparar.")
+    recentes = historico[-LEITURAS_DE_REFERENCIA:]
+    if recentes:
+        referencia, base = sum(recentes) / len(recentes), MEDIA_DAS_LEITURAS
+    elif peso_cadastro is not None and peso_cadastro > 0:
+        referencia, base = peso_cadastro, PESO_DO_CADASTRO
+        observacoes.append(
+            f"Primeira pesagem na balança: comparada com o peso do cadastro ({_kg(peso_cadastro)} kg)."
+        )
     else:
-        problemas.extend(_checar_variacao(variacao))
+        referencia, base = None, None
+        observacoes.append("Primeira leitura: sem histórico nem peso de cadastro para comparar.")
+
+    variacao = None
+    if referencia is not None:
+        # sem arredondar: 5,05% arredondado para 5% passaria como normal
+        variacao = (peso - referencia) / referencia * 100
+        problemas.extend(_checar_variacao(variacao, base))
 
     nivel = max((p.nivel for p in problemas), default=Nivel.NORMAL)
     return ResultadoPeso(peso, nivel, tuple(problemas), variacao, tuple(observacoes))
@@ -93,16 +109,7 @@ def _checar_faixa(peso: Decimal, faixa: FaixaPeso) -> list[Problema]:
     return []
 
 
-def _variacao_percentual(peso: Decimal, historico: list[Decimal]) -> Decimal | None:
-    recentes = historico[-LEITURAS_DE_REFERENCIA:]
-    if not recentes:
-        return None
-    referencia = sum(recentes) / len(recentes)
-    # sem arredondar: 5,05% arredondado para 5% passaria como normal
-    return (peso - referencia) / referencia * 100
-
-
-def _checar_variacao(variacao: Decimal) -> list[Problema]:
+def _checar_variacao(variacao: Decimal, base: str) -> list[Problema]:
     intensidade = abs(variacao)
     if intensidade <= LIMITE_ATENCAO:
         return []
@@ -112,10 +119,7 @@ def _checar_variacao(variacao: Decimal) -> list[Problema]:
         codigo, verbo = "PERDA_DE_PESO", "Perda"
     else:
         codigo, verbo = "GANHO_DE_PESO", "Ganho"
-    descricao = (
-        f"{verbo} de {_percentual(intensidade)} em relação à média "
-        f"das últimas {LEITURAS_DE_REFERENCIA} leituras."
-    )
+    descricao = f"{verbo} de {_percentual(intensidade)} em relação {base}."
     return [Problema(codigo, descricao, nivel)]
 
 
