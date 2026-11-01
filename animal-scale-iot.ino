@@ -5,14 +5,9 @@
 
 HX711 scale;
 
-String animalNames[6] = {
-  "Jake",
-  "Max",
-  "Luna",
-  "Bella",
-  "Thor",
-  "Mel"
-};
+// ID do animal em T_CP_ANIMAIS (cadastro da API .NET).
+// Na prática viria da tag RFID da coleira; na simulação, troque aqui para pesar outro animal.
+const int ANIMAL_ID = 1;
 
 // valor comum no Wokwi
 float calibration_factor = 422.0;
@@ -43,11 +38,10 @@ void loop() {
     weight = 0;
   }
 
-  int randomIndex = random(0, 6);
-
+  // formato: peso,animalId (ex.: 8.4,1). O Node-RED ignora 0 kg (balança vazia).
   String payload =
     String(weight, 1) + "," +
-    animalNames[randomIndex];
+    String(ANIMAL_ID);
 
   Serial.println(payload);
 
