@@ -1,4 +1,5 @@
 """Gabarito da escolha da ficha de cuidados (o "retrieval" do RAG)."""
+from datetime import date, datetime
 from decimal import Decimal
 
 import pytest
@@ -65,7 +66,9 @@ def test_linha_sem_limites_fica_sem_faixa_e_clob_nulo_vira_texto_vazio():
 
 
 def test_linha_do_animal():
-    animal = _animal_da_linha((Decimal("7"), "Thor", "DOG", "Labrador", Decimal("30.5")))
+    nascimento = datetime(2022, 5, 10)  # o Oracle devolve DATE como datetime
+    animal = _animal_da_linha((Decimal("7"), "Thor", "DOG", "Labrador", Decimal("30.5"), nascimento))
 
     assert animal.id == 7
     assert animal.especie == "DOG"
+    assert animal.nascimento == date(2022, 5, 10)

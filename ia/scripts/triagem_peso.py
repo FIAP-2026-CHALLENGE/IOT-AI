@@ -22,18 +22,15 @@ from servicos.triagem_peso import TriagemPesoServico
 def main(animal_id: int, peso: Decimal) -> None:
     pool = criar_pool(carregar_config_oracle())
     gemini = carregar_config_gemini()
-    leituras = LeituraRepositorio(pool)
     servico = TriagemPesoServico(
         animais=AnimalRepositorio(pool),
-        leituras=leituras,
+        leituras=LeituraRepositorio(pool),
         cuidados=CuidadoRacaRepositorio(pool),
         recomendacoes=RecomendacaoRepositorio(pool),
         llm=ClienteGemini(gemini.chave_api, gemini.modelo),
     )
 
-    # a leitura é gravada antes e fica fora da própria média (leitura_id)
-    leitura_id = leituras.registrar(animal_id, peso)
-    r = servico.avaliar(animal_id, peso, leitura_id=leitura_id)
+    leitura_id, r = servico.processar_leitura(animal_id, peso)
 
     print(f"Animal: {r.animal.nome} ({r.animal.especie}, {r.animal.raca}) | ficha usada: {r.ficha_usada}")
     origem_texto = "Gemini" if r.usou_llm else f"plano B (regra), motivo: {r.motivo_sem_llm}"

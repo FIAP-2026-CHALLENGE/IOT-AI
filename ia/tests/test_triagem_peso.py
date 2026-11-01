@@ -133,3 +133,23 @@ def test_primeira_pesagem_compara_com_o_cadastro_e_chama_o_llm():
     assert resultado.nivel == Nivel.ALERTA
     assert resultado.usou_llm is True
     assert "peso do cadastro" in llm.pedidos[0]["prompt"]
+
+
+def test_processar_leitura_grava_e_avalia_sem_a_propria_leitura_na_media():
+    servico, _, leituras, _ = montar([D("4.00")])
+
+    leitura_id, resultado = servico.processar_leitura(animal_id=1, peso=D("4.00"))
+
+    assert leituras.registradas == [(1, D("4.00"))]
+    assert leituras.chamadas[0]["antes_do_id"] == leitura_id
+    assert resultado.nivel == Nivel.NORMAL
+
+
+@pytest.mark.parametrize("animal_id, peso, erro", [(404, "4.00", AnimalNaoEncontradoError), (1, "0", LeituraInvalidaError)])
+def test_processar_leitura_invalida_nao_grava(animal_id, peso, erro):
+    servico, _, leituras, _ = montar([])
+
+    with pytest.raises(erro):
+        servico.processar_leitura(animal_id=animal_id, peso=D(peso))
+
+    assert leituras.registradas == []
