@@ -47,3 +47,13 @@ def carregar_config_gemini() -> ConfigGemini:
         chave_api=os.environ["GEMINI_API_KEY"],
         modelo=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
     )
+
+
+@dataclass(frozen=True)
+class ConfigApi:
+    url_publica: str  # onde a API é acessada; entra na URL das fotos gravada no Oracle
+
+
+def carregar_config_api() -> ConfigApi:
+    load_dotenv()
+    return ConfigApi(url_publica=os.getenv("API_URL", "http://localhost:8000").rstrip("/"))
