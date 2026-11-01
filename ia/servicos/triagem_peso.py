@@ -8,7 +8,7 @@ from typing import Protocol
 
 from dominio.animal import Animal
 from dominio.cuidados import FichaCuidado, encontrar_ficha
-from dominio.peso import LEITURAS_DE_REFERENCIA, Nivel, Problema, avaliar_peso
+from dominio.peso import LEITURAS_DE_REFERENCIA, LeituraInvalidaError, Nivel, Problema, avaliar_peso
 from dominio.recomendacao import NovaRecomendacao, Origem
 from llm.cliente import ClienteLLM, LLMIndisponivelError
 from servicos.prompts import INSTRUCOES_TRIAGEM, prompt_peso, texto_sem_llm
@@ -25,6 +25,8 @@ class Animais(Protocol):
 
 class Leituras(Protocol):
     def historico(self, animal_id: int, limite: int, antes_do_id: int | None = None) -> list[Decimal]: ...
+
+    def registrar(self, animal_id: int, peso: Decimal) -> int: ...
 
 
 class Cuidados(Protocol):
@@ -61,6 +63,19 @@ class TriagemPesoServico:
         self._cuidados = cuidados
         self._recomendacoes = recomendacoes
         self._llm = llm
+
+    def processar_leitura(self, animal_id: int, peso: Decimal) -> tuple[int, ResultadoTriagem]:
+        """Caminho da balança: grava a leitura em T_EXAM_READING e avalia. Devolve (leitura_id, resultado).
+
+        Confere o animal e o peso antes de gravar, para não deixar leitura inválida no banco.
+        """
+        if self._animais.buscar_por_id(animal_id) is None:
+            raise AnimalNaoEncontradoError(f"Animal {animal_id} não encontrado.")
+        if peso <= 0:
+            raise LeituraInvalidaError(f"Peso inválido: {peso} kg.")
+        leitura_id = self._leituras.registrar(animal_id, peso)
+        # a leitura recém-gravada fica fora da própria média (antes_do_id)
+        return leitura_id, self.avaliar(animal_id, peso, leitura_id=leitura_id)
 
     def avaliar(self, animal_id: int, peso: Decimal, leitura_id: int | None = None) -> ResultadoTriagem:
         animal = self._animais.buscar_por_id(animal_id)
