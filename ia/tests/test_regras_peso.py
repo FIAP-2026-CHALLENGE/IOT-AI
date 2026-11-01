@@ -3,7 +3,8 @@
 Regras (decididas em código, nunca pelo LLM):
 - Faixa da raça: peso dentro de [mínimo, máximo] é normal; os limites contam como dentro.
   Fora da faixa -> ATENCAO.
-- Variação: comparada com a média das últimas 5 leituras anteriores.
+- Variação: comparada com a média das últimas 5 leituras anteriores; sem leituras,
+  com o peso do cadastro do animal (T_CP_ANIMAIS.WEIGHT); sem os dois, não é calculada.
   Até 5% (inclusive) -> normal; acima de 5% até 10% (inclusive) -> ATENCAO; acima de 10% -> ALERTA.
 - O nível final é o mais grave entre os problemas encontrados.
 - Peso zero ou negativo (balança vazia) não é avaliado.
@@ -62,6 +63,24 @@ def test_primeira_leitura_sem_historico_nao_calcula_variacao():
     assert resultado.nivel == Nivel.NORMAL
     assert resultado.variacao_percentual is None
     assert any("Primeira leitura" in o for o in resultado.observacoes)
+
+
+def test_sem_historico_compara_com_o_peso_do_cadastro():
+    # caso real: Thor (Pug, 8,5 kg no cadastro, raça fora da base) pesado com 18 kg
+    resultado = avaliar_peso(D("18"), None, [], peso_cadastro=D("8.50"))
+
+    assert resultado.nivel == Nivel.ALERTA
+    assert [p.codigo for p in resultado.problemas] == ["GANHO_DE_PESO"]
+    assert "peso do cadastro" in resultado.problemas[0].descricao
+    assert any("peso do cadastro (8,50 kg)" in o for o in resultado.observacoes)
+
+
+def test_com_historico_o_peso_do_cadastro_e_ignorado():
+    # o cadastro pode estar desatualizado; as pesagens da balança são mais recentes
+    resultado = avaliar_peso(D("10.00"), None, [D("10.00")], peso_cadastro=D("5.00"))
+
+    assert resultado.nivel == Nivel.NORMAL
+    assert resultado.variacao_percentual == 0  # contra o cadastro seria +100%
 
 
 def test_raca_sem_faixa_avalia_so_a_variacao():
