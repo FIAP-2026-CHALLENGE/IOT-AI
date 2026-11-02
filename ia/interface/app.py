@@ -4,6 +4,7 @@ A interface não acessa o banco nem o Gemini: tudo passa pela API (api/main.py).
 Rodar (dentro de ia/, com a API no ar):  .venv/Scripts/python -m streamlit run interface/app.py
 """
 import os
+import re
 
 import httpx
 import pandas as pd
@@ -33,9 +34,18 @@ def chamar(metodo: str, caminho: str, **kwargs):
     return resposta.json()
 
 
+# rótulos do formato pedido ao LLM (servicos/prompts.py): cada um vira um parágrafo em negrito
+SECOES = r"(Resumo:|O que fazer:|Quando procurar o veterinário:|Vacinas:|Cuidados da raça:|Próximo passo:)"
+
+
+def formatar(texto: str) -> str:
+    """Separa as seções do texto do LLM, que o Markdown juntaria numa linha só."""
+    return re.sub(SECOES, r"\n\n**\1**", texto).strip()
+
+
 def mostrar_resultado(nivel: str, texto: str, usou_llm: bool, motivo: str | None) -> None:
     caixa = {"NORMAL": st.success, "ATENCAO": st.warning, "ALERTA": st.error}[nivel]
-    caixa(f"**{ROTULOS[nivel]}**\n\n{texto}")
+    caixa(f"**{ROTULOS[nivel]}**\n\n{formatar(texto)}")
     if usou_llm:
         st.caption("Orientação escrita pela IA (Gemini) a partir das regras e da ficha da raça.")
     else:
@@ -115,7 +125,7 @@ with aba_cuidados:
             r = chamar("POST", f"/animais/{animal['id']}/plano-cuidados")
         if r:
             st.write(f"**Ficha usada:** {r['ficha_usada']} · **Idade:** {r['idade']}")
-            st.info(r["texto"])
+            st.info(formatar(r["texto"]))
             st.caption("Escrito pela IA (Gemini)." if r["usou_llm"] else f"Ficha da base, sem o LLM ({r['motivo_sem_llm']}).")
 
 # ---------- histórico ----------
@@ -128,6 +138,6 @@ with aba_historico:
             continue
         data = pd.to_datetime(r["data"]).strftime("%d/%m/%Y %H:%M")
         with st.expander(f"{ROTULOS[r['nivel']]} · {ORIGENS.get(r['origem'], r['origem'])} · {data}"):
-            st.write(r["texto"])
+            st.markdown(formatar(r["texto"]))
     if not recomendacoes:
         st.info("Nenhuma orientação registrada ainda.")

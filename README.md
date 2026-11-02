@@ -311,36 +311,51 @@ cd ia
 > Prints em `docs/evidencias/`.
 
 **Balança no Wokwi publicando no MQTT**
+
 ![Wokwi publicando o peso](docs/evidencias/01-wokwi-publicando.png)
 
 **Fluxo do Node-RED**
+
 ![Fluxo do Node-RED](docs/evidencias/02-node-red-fluxo.png)
 
 **Painel do Node-RED com a triagem da IA**
+
 ![Painel do Node-RED](docs/evidencias/03-node-red-painel.png)
 
 **API recebendo as pesagens (`POST /leituras` 201)**
+
 ![Log da API](docs/evidencias/04-api-log.png)
 
 **Documentação da API (Swagger)**
+
 ![Swagger](docs/evidencias/05-swagger.png)
 
 **App do tutor: pesagens e triagem**
+
 ![Pesagens no app](docs/evidencias/06-app-pesagens.png)
 
 **App do tutor: relato com foto**
+
 ![Relato com foto](docs/evidencias/07-app-relato-foto.png)
 
+A foto enviada fica registrada no relato, e o Gemini descreve só o que é visível nela, sem afirmar doença:
+
+![Foto registrada no relato](docs/evidencias/07b-app-relato-foto-resultado.png)
+
 **App do tutor: plano de cuidados**
+
 ![Plano de cuidados](docs/evidencias/08-app-plano-cuidados.png)
 
 **App do tutor: histórico da IA**
+
 ![Histórico da IA](docs/evidencias/09-app-historico.png)
 
 **Oracle: orientações registradas em `T_AI_RECOMMENDATION`**
+
 ![SELECT no Oracle](docs/evidencias/10-oracle-recomendacoes.png)
 
 **Testes automatizados (87 passando)**
+
 ![pytest](docs/evidencias/11-pytest.png)
 
 ---
