@@ -130,7 +130,7 @@ Arquivo: [`ia/servicos/prompts.py`](ia/servicos/prompts.py) e [`ia/llm/gemini.py
 
 ## 4. Sprint 3 × Sprint 4: o que foi definido e o que foi implementado
 
-A Sprint 3 definiu o componente de IA ([vídeo da Sprint 3](https://youtu.be/CoorQwypCCo)). A Sprint 4 implementou essa definição e evoluiu alguns pontos:
+A Sprint 3 definiu o componente de IA, só em documentação (texto e o [diagrama da Sprint 3](docs/diagrama-arquitetura-ia.png), sem vídeo). A Sprint 4 implementou essa definição e evoluiu alguns pontos:
 
 | Definido na Sprint 3 | Implementado na Sprint 4 | |
 |---|---|---|
@@ -374,7 +374,7 @@ A foto enviada fica registrada no relato, e o Gemini descreve só o que é visí
 ## 13. Vídeos
 
 - Sprint 4 (implementação): `<inserir link do YouTube>`
-- Sprint 3 (definição): https://youtu.be/CoorQwypCCo
+- Sprint 1 (balança no Wokwi e Node-RED): https://youtu.be/CoorQwypCCo
 
 <details>
 <summary>Histórico: Sprints 1 e 2 (balança gravando direto no Oracle)</summary>
