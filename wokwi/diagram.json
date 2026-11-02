@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "author": "Misael Agustin",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": -202.74,
+      "left": -367.9,
+      "rotate": 270,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-hx711",
+      "id": "cell1",
+      "top": -141.4,
+      "left": -112.6,
+      "attrs": { "type": "50kg" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:3V3", "cell1:VCC", "red", [ "v38.25", "h240", "v-76.8" ] ],
+    [ "cell1:GND", "esp:GND.3", "black", [ "h-28.8", "v-67.5", "h-9.6" ] ],
+    [ "cell1:SCK", "esp:5", "limegreen", [ "h-76.8", "v-68", "h-124.8" ] ],
+    [ "esp:4", "cell1:DT", "yellow", [ "v-9.6", "h76.8", "v48.5" ] ]
+  ],
+  "dependencies": {}
+}
