@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>CLYVO VET - Arquitetura da IA de triagem (Sprint 4)</title>
+<style>
+  :root { --tema:#0b7f8a; --tema-claro:#e3f4f4; --tema-borda:#9fd3d3; --texto:#1f2933; --suave:#5f6b7a; --borda:#c8d1dc;
+          --oracle:#c74634; --google:#4285f4; --dotnet:#512bd4; --nodered:#8f0000; --hive:#e0a800; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { width:1600px; height:1000px; background:#fff; font-family:"Segoe UI",Arial,sans-serif; color:var(--texto); position:relative; overflow:hidden; }
+  .titulo { position:absolute; left:40px; top:26px; }
+  .titulo h1 { font-size:29px; font-weight:700; letter-spacing:-0.4px; }
+  .titulo h1 span { background:linear-gradient(180deg,#14a3ad,#0b7f8a); color:#fff; padding:0 10px; border-radius:6px; }
+  .titulo p { font-size:14.5px; color:var(--suave); margin-top:4px; }
+  .legenda { position:absolute; right:40px; top:38px; display:flex; gap:22px; font-size:13px; color:var(--suave); align-items:center; }
+  .legenda div { display:flex; align-items:center; gap:8px; }
+  .num { display:inline-flex; width:22px; height:22px; border-radius:50%; background:var(--tema); color:#fff; font-size:12px; font-weight:700; align-items:center; justify-content:center; }
+  .letra { background:#e8590c; }
+  .tracejada { width:30px; border-top:2px dashed #8a96a3; }
+  .zona { position:absolute; border-radius:14px; }
+  .zona > .rotulo { position:absolute; top:-14px; left:18px; background:#fff; padding:0 10px; font-size:14px; font-weight:600; color:var(--suave); white-space:nowrap; }
+  .wokwi { left:40px; top:140px; width:290px; height:310px; border:2px dashed #8a96a3; }
+  .internet { left:375px; top:262px; width:240px; height:170px; border:2px dashed var(--hive); }
+  .internet > .rotulo { color:#a07800; }
+  .local { left:650px; top:140px; width:540px; height:835px; border:2px solid var(--tema); background:#fbfefe; }
+  .local > .rotulo { color:var(--tema); }
+  .google { left:1235px; top:140px; width:330px; height:185px; border:2px dashed var(--google); }
+  .google > .rotulo { color:var(--google); }
+  .fiap { left:1235px; top:372px; width:330px; height:420px; border:2px dashed var(--oracle); }
+  .fiap > .rotulo { color:var(--oracle); }
+  .dotnetz { left:1235px; top:838px; width:330px; height:137px; border:2px dashed #8a96a3; }
+  .card { position:absolute; border-radius:10px; background:#fff; border:1.5px solid var(--borda); display:flex; align-items:center; gap:12px; padding:10px 14px; box-shadow:0 2px 6px rgba(15,40,80,.06); }
+  .card .txt { display:flex; flex-direction:column; }
+  .card b { font-size:14px; }
+  .card small { font-size:11.5px; color:var(--suave); margin-top:2px; line-height:1.35; }
+  .card code, .chip code { font-family:Consolas,monospace; font-size:11px; background:#eef2f6; padding:1px 4px; border-radius:4px; }
+  .externo { border-style:dashed; background:#fafbfc; }
+  .api { flex-direction:column; align-items:stretch; padding:14px 16px; border:2px solid var(--tema); }
+  .api .topo { display:flex; align-items:center; gap:12px; }
+  .api .topo b { font-size:16px; }
+  .chips { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+  .chip { background:var(--tema-claro); border:1px solid var(--tema-borda); border-radius:8px; padding:8px 10px; font-size:12.5px; font-weight:600; line-height:1.3; }
+  .saidas { margin-top:9px; display:flex; flex-direction:column; gap:3px; font-size:12px; color:var(--suave); }
+  .saidas div { display:flex; align-items:center; gap:8px; }
+  .saidas .num { width:18px; height:18px; font-size:10.5px; }
+  .chip small { display:block; font-weight:400; color:var(--suave); font-size:11px; margin-top:2px; }
+  .tabela { position:absolute; left:1262px; width:276px; height:52px; border-radius:8px; border:1.5px solid #ecc5bf; background:#fff; padding:7px 12px; }
+  .tabela b { font-family:Consolas,monospace; font-size:12.5px; color:var(--oracle); }
+  .tabela small { display:block; font-size:11.5px; color:var(--suave); margin-top:2px; }
+  .persona { position:absolute; width:170px; text-align:center; }
+  .persona b { display:block; font-size:14px; margin-top:4px; }
+  .persona small { display:block; font-size:12px; color:var(--suave); line-height:1.35; }
+  svg.setas { position:absolute; left:0; top:0; }
+  .seta-txt { font-size:12px; font-weight:600; fill:var(--texto); }
+  .seta-sub { font-size:11px; fill:var(--suave); }
+</style>
+</head>
+<body>
+
+<div class="titulo">
+  <h1>CLYVO VET · <span>IA de triagem</span></h1>
+  <p>Sprint 4 · Disruptive Architectures: IoT, IoB &amp; Generative IA · balança IoT, relato do tutor e plano de cuidados</p>
+</div>
+<div class="legenda">
+  <div><span class="num">1</span> fluxo da balança</div>
+  <div><span class="num letra">A</span> fluxo do tutor</div>
+  <div><span class="tracejada"></span> fora desta disciplina / serviço externo</div>
+</div>
+
+<!-- zonas -->
+<div class="zona wokwi"><div class="rotulo">Wokwi · simulação do hardware</div></div>
+<div class="zona internet"><div class="rotulo">Internet · broker MQTT</div></div>
+<div class="zona local"><div class="rotulo">Serviços da IA (Python + Node-RED)</div></div>
+<div class="zona google"><div class="rotulo">Google AI Studio</div></div>
+<div class="zona fiap"><div class="rotulo">Oracle Database · FIAP</div></div>
+<div class="zona dotnetz"><div class="rotulo">Disciplina de .NET</div></div>
+
+<!-- Wokwi -->
+<div class="card" style="left:70px;top:178px;width:230px;height:92px">
+  <svg width="38" height="38" viewBox="0 0 38 38"><rect x="2" y="7" width="34" height="24" rx="3" fill="#1f8a3b"/><rect x="9" y="12" width="12" height="14" rx="1.5" fill="#103d1c"/><g fill="#d9b44a"><rect x="25" y="11" width="7" height="3"/><rect x="25" y="17" width="7" height="3"/><rect x="25" y="23" width="7" height="3"/></g></svg>
+  <div class="txt"><b>HX711 + célula 50 kg</b><small>balança onde o pet sobe</small></div>
+</div>
+<div class="card" style="left:70px;top:322px;width:230px;height:100px">
+  <svg width="38" height="38" viewBox="0 0 38 38"><rect x="7" y="7" width="24" height="24" rx="3" fill="#2b2f36"/><rect x="12" y="12" width="14" height="14" rx="1.5" fill="#cfd6de"/><g fill="#9aa5b1"><rect x="2" y="11" width="5" height="2"/><rect x="2" y="18" width="5" height="2"/><rect x="2" y="25" width="5" height="2"/><rect x="31" y="11" width="5" height="2"/><rect x="31" y="18" width="5" height="2"/><rect x="31" y="25" width="5" height="2"/></g></svg>
+  <div class="txt"><b>ESP32</b><small>WiFi <code>Wokwi-GUEST</code><br>publica <code>peso,animalId</code></small></div>
+</div>
+
+<!-- broker -->
+<div class="card" style="left:395px;top:296px;width:200px;height:110px">
+  <svg width="38" height="38" viewBox="0 0 38 38"><polygon points="19,2 34,10.5 34,27.5 19,36 4,27.5 4,10.5" fill="#ffc000"/><text x="19" y="23.5" font-size="10" font-weight="700" text-anchor="middle" fill="#3a2c00" font-family="Segoe UI,Arial">MQTT</text></svg>
+  <div class="txt"><b>HiveMQ</b><small><code>broker.hivemq.com</code><br>tópico <code>clyvovet/…/balanca</code></small></div>
+</div>
+
+<!-- Node-RED e painel -->
+<div class="card" style="left:680px;top:180px;width:230px;height:104px">
+  <svg width="38" height="38" viewBox="0 0 38 38"><rect x="1" y="1" width="36" height="36" rx="8" fill="#8f0000"/><path d="M10 13 C17 13 17 25 24 25" stroke="#fff" stroke-width="2.2" fill="none"/><rect x="6" y="10" width="8" height="6" rx="2" fill="#fff"/><rect x="24" y="22" width="8" height="6" rx="2" fill="#fff"/></svg>
+  <div class="txt"><b>Node-RED :1880</b><small>ignora 0 kg · 1 triagem<br>a cada 10 s (cota do LLM)</small></div>
+</div>
+<div class="card" style="left:935px;top:180px;width:225px;height:104px">
+  <svg width="38" height="38" viewBox="0 0 38 38"><rect x="2" y="5" width="34" height="28" rx="4" fill="#e3f4f4" stroke="#0b7f8a" stroke-width="2"/><path d="M8 26 L14 18 L20 22 L29 12" stroke="#0b7f8a" stroke-width="2.4" fill="none"/></svg>
+  <div class="txt"><b>Painel /ui</b><small>gauge, gráfico do peso<br>e a triagem da IA</small></div>
+</div>
+
+<!-- API -->
+<div class="card api" style="left:680px;top:340px;width:480px;height:356px">
+  <div class="topo">
+    <svg width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="19" fill="#009688"/><path d="M22 7 L11 23 H19 L17 33 L29 16 H21 Z" fill="#fff"/></svg>
+    <div class="txt"><b>API de IA · FastAPI :8000</b><small>Python 3.13 · regras no código, interpretação no LLM</small></div>
+  </div>
+  <div class="chips">
+    <div class="chip">Regras de peso<small>faixa da raça e variação (Decimal)</small></div>
+    <div class="chip">RAG: ficha da raça<small>só a ficha certa vai ao LLM</small></div>
+    <div class="chip">Relato: texto + foto<small>mesma chamada multimodal</small></div>
+    <div class="chip">Trava de emergência<small>convulsão, sangue… → ALERTA</small></div>
+    <div class="chip">Plano de cuidados<small>ficha + idade + peso</small></div>
+    <div class="chip">Plano B sem LLM<small>falhou ou passou de 30 s</small></div>
+  </div>
+  <div class="saidas">
+    <div><span class="num">5</span> SQL: lê animal, histórico e ficha; grava a leitura</div>
+    <div><span class="num">6</span> HTTPS: prompt + ficha da raça (+ foto) ao Gemini</div>
+    <div><span class="num">7</span> SQL: grava a orientação e o nível</div>
+  </div>
+</div>
+
+<!-- Streamlit e uploads -->
+<div class="card" style="left:680px;top:748px;width:230px;height:110px">
+  <svg width="38" height="38" viewBox="0 0 38 38"><path d="M4 30 L12 10 L19 24 L26 10 L34 30 Z" fill="#ff4b4b"/><path d="M12 10 L19 24 L26 10 L19 19 Z" fill="#7d353b"/></svg>
+  <div class="txt"><b>App do tutor</b><small>Streamlit :8501 · pesagens,<br>relato, plano, histórico</small></div>
+</div>
+<div class="card" style="left:935px;top:748px;width:225px;height:110px">
+  <svg width="38" height="38" viewBox="0 0 38 38"><path d="M3 10 H15 L18 14 H35 V32 H3 Z" fill="#f4c542"/><rect x="13" y="18" width="12" height="10" rx="1.5" fill="#fff"/><circle cx="17" cy="22" r="1.6" fill="#0b7f8a"/><path d="M14 27 L18 23 L24 27 Z" fill="#0b7f8a"/></svg>
+  <div class="txt"><b>Fotos dos relatos</b><small>pasta <code>/uploads</code><br>o Oracle guarda só a URL</small></div>
+</div>
+
+<!-- Gemini -->
+<div class="card" style="left:1265px;top:176px;width:270px;height:118px">
+  <svg width="40" height="40" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4285f4"/><stop offset="1" stop-color="#9b72cb"/></linearGradient></defs><path d="M20 2 C21.5 12 28 18.5 38 20 C28 21.5 21.5 28 20 38 C18.5 28 12 21.5 2 20 C12 18.5 18.5 12 20 2 Z" fill="url(#g)"/></svg>
+  <div class="txt"><b>Gemini 3.5 Flash</b><small>LLM multimodal (texto + imagem)<br>temperatura 0,2 · limite 30 s</small></div>
+</div>
+
+<!-- Oracle -->
+<div class="card" style="left:1262px;top:400px;width:276px;height:46px;border-color:#ecc5bf">
+  <svg width="34" height="22" viewBox="0 0 34 22"><rect x="1" y="1" width="32" height="20" rx="10" fill="none" stroke="#c74634" stroke-width="3.5"/></svg>
+  <div class="txt"><b style="color:#c74634">Oracle · schema do grupo</b></div>
+</div>
+<div class="tabela" style="top:456px"><b>T_CP_ANIMAIS</b><small>cadastro dos animais (API .NET)</small></div>
+<div class="tabela" style="top:518px"><b>T_EXAM_READING</b><small>pesagens da balança</small></div>
+<div class="tabela" style="top:580px"><b>T_BREED_CARE</b><small>base de cuidados por raça (RAG)</small></div>
+<div class="tabela" style="top:642px"><b>T_TUTOR_REPORT</b><small>relatos do tutor e URL da foto</small></div>
+<div class="tabela" style="top:704px"><b>T_AI_RECOMMENDATION</b><small>toda orientação da IA + nível</small></div>
+
+<!-- .NET -->
+<div class="card externo" style="left:1265px;top:866px;width:270px;height:90px">
+  <svg width="38" height="38" viewBox="0 0 38 38"><rect x="1" y="1" width="36" height="36" rx="7" fill="#512bd4"/><text x="19" y="23.5" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" font-family="Segoe UI,Arial">.NET</text></svg>
+  <div class="txt"><b>API CLYVO VET</b><small>CRUD de responsáveis e animais</small></div>
+</div>
+
+<!-- persona -->
+<div class="persona" style="left:90px;top:745px">
+  <svg width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="18" r="11" fill="#9aa5b1"/><path d="M8 52 C8 38 18 32 28 32 C38 32 48 38 48 52 Z" fill="#9aa5b1"/></svg>
+  <b>Tutor do pet</b>
+  <small>relata sintomas, envia foto<br>e acompanha as orientações</small>
+</div>
+
+<!-- setas -->
+<svg class="setas" width="1600" height="1000">
+  <defs>
+    <marker id="p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#0b7f8a"/></marker>
+    <marker id="l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#e8590c"/></marker>
+    <marker id="c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#8a96a3"/></marker>
+  </defs>
+  <g stroke="#0b7f8a" stroke-width="2.2" fill="none" marker-end="url(#p)">
+    <path d="M185 270 V318"/>                         <!-- 1 -->
+    <path d="M300 372 H391"/>                         <!-- 2 -->
+    <path d="M595 330 H636 V232 H676"/>               <!-- 3 -->
+    <path d="M795 284 V336"/>                         <!-- 4 -->
+    <path d="M1160 470 H1258"/>                       <!-- 5 -->
+    <path d="M1160 380 H1200 V235 H1261"/>            <!-- 6 -->
+    <path d="M1160 620 H1210 V729 H1258"/>            <!-- 7 -->
+    <path d="M1047 340 V288"/>                        <!-- 8 -->
+  </g>
+  <g stroke="#e8590c" stroke-width="2.2" fill="none" marker-end="url(#l)">
+    <path d="M262 800 H676"/>                         <!-- A -->
+    <path d="M795 748 V700"/>                         <!-- B -->
+    <path d="M1047 696 V744"/>                        <!-- C -->
+  </g>
+  <path d="M1400 866 V795" stroke="#8a96a3" stroke-width="2" stroke-dasharray="6 5" fill="none" marker-end="url(#c)"/>
+
+  <!-- rótulos fluxo da balança -->
+  <g font-family="Segoe UI,Arial">
+    <circle cx="207" cy="294" r="11" fill="#0b7f8a"/><text x="207" y="298" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+    <text class="seta-sub" x="224" y="298">leitura do peso</text>
+
+    <circle cx="322" cy="352" r="11" fill="#0b7f8a"/><text x="322" y="356" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+
+    <circle cx="636" cy="282" r="11" fill="#0b7f8a"/><text x="636" y="286" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">3</text>
+    <text class="seta-sub" x="392" y="424">2 publish · 3 subscribe · MQTT :1883</text>
+
+    <circle cx="772" cy="310" r="11" fill="#0b7f8a"/><text x="772" y="314" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">4</text>
+    <text class="seta-txt" x="806" y="306">POST /leituras</text>
+    <text class="seta-sub" x="806" y="320">JSON {animal_id, peso}</text>
+
+    <circle cx="1070" cy="314" r="11" fill="#0b7f8a"/><text x="1070" y="318" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">8</text>
+    <text class="seta-sub" x="1086" y="318">nível + texto</text>
+
+    <circle cx="1225" cy="300" r="11" fill="#0b7f8a"/><text x="1225" y="304" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">6</text>
+
+    <circle cx="1210" cy="456" r="11" fill="#0b7f8a"/><text x="1210" y="460" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">5</text>
+
+    <circle cx="1210" cy="680" r="11" fill="#0b7f8a"/><text x="1210" y="684" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">7</text>
+  </g>
+
+  <!-- rótulos fluxo do tutor -->
+  <g font-family="Segoe UI,Arial">
+    <circle cx="440" cy="800" r="11" fill="#e8590c"/><text x="440" y="804" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">A</text>
+    <text class="seta-txt" x="370" y="784">usa o app no navegador</text>
+    <text class="seta-sub" x="372" y="822">relato, foto, plano, histórico</text>
+
+    <circle cx="772" cy="724" r="11" fill="#e8590c"/><text x="772" y="728" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">B</text>
+    <text class="seta-sub" x="806" y="719">HTTP :8000</text>
+    <text class="seta-sub" x="806" y="732">multipart (texto + foto)</text>
+
+    <circle cx="1070" cy="720" r="11" fill="#e8590c"/><text x="1070" y="724" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">C</text>
+    <text class="seta-sub" x="1086" y="724">salva a foto</text>
+
+    <text class="seta-sub" x="1410" y="826">grava T_CP_ANIMAIS</text>
+  </g>
+</svg>
+
+</body>
+</html>
