@@ -2,7 +2,7 @@
     {
         "id": "f465c0e220cfe9f3",
         "type": "tab",
-        "label": "sprint 1 e 2",
+        "label": "Balança + IA (Sprint 4)",
         "disabled": false,
         "info": "",
         "env": []
@@ -11,9 +11,9 @@
         "id": "360cd85df71440ec",
         "type": "function",
         "z": "f465c0e220cfe9f3",
-        "name": "function 1",
-        "func": "const parts = msg.payload.split(',');\n\nmsg.payload = {\n    READING: Number(parts[0]),\n    ANIMAL: parts[1]\n};\n\nreturn msg;",
-        "outputs": 1,
+        "name": "Leitura → API",
+        "func": "// Payload do ESP32: \"peso,animalId\" (ex.: \"8.4,1\").\n// O animalId é o ID do animal em T_CP_ANIMAIS (na prática, viria da tag RFID da coleira).\nconst [peso, animalId] = String(msg.payload).split(',').map(Number);\n\nif (!(peso > 0) || !Number.isInteger(animalId)) {\n    // balança vazia (0 kg) ou payload fora do formato: não vai para a IA\n    node.warn(`Leitura ignorada: ${msg.payload}`);\n    return [null, null];\n}\n\nreturn [\n    { payload: { animal_id: animalId, peso: peso } }, // saída 1: corpo do POST /leituras\n    { payload: peso }                                 // saída 2: número para o gráfico e o gauge\n];",
+        "outputs": 2,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -23,16 +23,111 @@
         "y": 540,
         "wires": [
             [
-                "93dab3c1c3a5e980",
-                "31727ad0582900a1"
+                "b3a1c2d4e5f60001",
+                "93dab3c1c3a5e980"
+            ],
+            [
+                "2be598bb97e09d49",
+                "6ac6601392025e3b"
             ]
         ]
+    },
+    {
+        "id": "b3a1c2d4e5f60001",
+        "type": "delay",
+        "z": "f465c0e220cfe9f3",
+        "name": "1 triagem a cada 10 s",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "10",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": true,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 640,
+        "y": 620,
+        "wires": [
+            [
+                "b3a1c2d4e5f60002"
+            ]
+        ]
+    },
+    {
+        "id": "b3a1c2d4e5f60002",
+        "type": "http request",
+        "z": "f465c0e220cfe9f3",
+        "name": "POST /leituras (IA)",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://localhost:8000/leituras",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 860,
+        "y": 620,
+        "wires": [
+            [
+                "ef618ccb5721553f",
+                "b3a1c2d4e5f60003"
+            ]
+        ]
+    },
+    {
+        "id": "b3a1c2d4e5f60003",
+        "type": "function",
+        "z": "f465c0e220cfe9f3",
+        "name": "Texto para o painel",
+        "func": "// 201: triagem feita; outro código: mostra o erro da API (ex.: 404 animal não encontrado)\nif (msg.statusCode !== 201) {\n    msg.payload = `Erro ${msg.statusCode}: ${msg.payload && msg.payload.detail || 'API indisponível'}`;\n    return msg;\n}\nconst r = msg.payload;\nmsg.payload = `${r.nivel} · ${r.animal}\n\n${r.texto}`;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1080,
+        "y": 620,
+        "wires": [
+            [
+                "b3a1c2d4e5f60004"
+            ]
+        ]
+    },
+    {
+        "id": "b3a1c2d4e5f60004",
+        "type": "ui_text",
+        "z": "f465c0e220cfe9f3",
+        "group": "b3a1c2d4e5f60006",
+        "order": 1,
+        "width": 10,
+        "height": 9,
+        "name": "",
+        "label": "",
+        "format": "<div style=\"white-space: pre-wrap; text-align: left; line-height: 1.4\">{{msg.payload}}</div>",
+        "layout": "row-left",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 1280,
+        "y": 620,
+        "wires": []
     },
     {
         "id": "ef618ccb5721553f",
         "type": "debug",
         "z": "f465c0e220cfe9f3",
-        "name": "Retorno Oracle",
+        "name": "Resposta da IA",
         "active": true,
         "tosidebar": true,
         "console": false,
@@ -50,8 +145,8 @@
         "type": "mqtt in",
         "z": "f465c0e220cfe9f3",
         "name": "",
-        "topic": "mqtt",
-        "qos": "2",
+        "topic": "clyvovet/fiap2026/balanca",
+        "qos": "0",
         "datatype": "auto-detect",
         "broker": "d23b4e390c78a3a0",
         "nl": false,
@@ -63,8 +158,31 @@
         "wires": [
             [
                 "216d354af95bda7f",
-                "2be598bb97e09d49",
-                "6ac6601392025e3b",
+                "360cd85df71440ec"
+            ]
+        ]
+    },
+    {
+        "id": "b3a1c2d4e5f60005",
+        "type": "inject",
+        "z": "f465c0e220cfe9f3",
+        "name": "Simular balança (8.4 kg, animal 1)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "8.4,1",
+        "payloadType": "str",
+        "x": 150,
+        "y": 600,
+        "wires": [
+            [
                 "360cd85df71440ec"
             ]
         ]
@@ -75,10 +193,10 @@
         "z": "f465c0e220cfe9f3",
         "name": "",
         "group": "66a7ba9479203632",
-        "order": 0,
-        "width": "6",
-        "height": "6",
-        "label": "Gráfico",
+        "order": 2,
+        "width": 6,
+        "height": 5,
+        "label": "Peso (kg)",
         "chartType": "line",
         "legend": "false",
         "xformat": "HH:mm:ss",
@@ -134,7 +252,7 @@
         "id": "93dab3c1c3a5e980",
         "type": "debug",
         "z": "f465c0e220cfe9f3",
-        "name": "Valor tratado para função SQL",
+        "name": "Corpo enviado à IA",
         "active": true,
         "tosidebar": true,
         "console": false,
@@ -154,14 +272,14 @@
         "name": "",
         "group": "66a7ba9479203632",
         "order": 1,
-        "width": 0,
-        "height": 0,
+        "width": 6,
+        "height": 4,
         "gtype": "gage",
-        "title": "Gauge",
-        "label": "units",
+        "title": "Peso (kg)",
+        "label": "kg",
         "format": "{{value}}",
         "min": 0,
-        "max": 10,
+        "max": 50,
         "colors": [
             "#00b500",
             "#e6e600",
@@ -176,35 +294,15 @@
         "wires": []
     },
     {
-        "id": "31727ad0582900a1",
-        "type": "oracledb",
-        "z": "f465c0e220cfe9f3",
-        "name": "",
-        "usequery": true,
-        "query": "INSERT INTO T_EXAM_READING\n(READING, ANIMAL, DATETIME)\nVALUES\n(:READING, :ANIMAL, SYSDATE)",
-        "usemappings": false,
-        "mappings": "",
-        "server": "f752a32d191d8d6a",
-        "resultaction": "single-meta",
-        "resultlimit": 100,
-        "x": 660,
-        "y": 540,
-        "wires": [
-            [
-                "ef618ccb5721553f"
-            ]
-        ]
-    },
-    {
         "id": "d23b4e390c78a3a0",
         "type": "mqtt-broker",
-        "name": "Hive MQ Server",
-        "broker": "51bf02160f1f4ecb81b48d440bf18c96.s1.eu.hivemq.cloud",
-        "port": "8883",
-        "tls": "4b69885e5e7a323a",
+        "name": "HiveMQ público",
+        "broker": "broker.hivemq.com",
+        "port": "1883",
+        "tls": "",
         "clientid": "",
         "autoConnect": true,
-        "usetls": true,
+        "usetls": false,
         "protocolVersion": "5",
         "keepalive": 60,
         "cleansession": true,
@@ -230,7 +328,7 @@
     {
         "id": "66a7ba9479203632",
         "type": "ui_group",
-        "name": "Saídas Analógicas",
+        "name": "Balança",
         "tab": "bc832aabcd78d697",
         "order": 1,
         "disp": true,
@@ -239,32 +337,15 @@
         "className": ""
     },
     {
-        "id": "f752a32d191d8d6a",
-        "type": "oracle-server",
-        "connectionname": "orcl",
-        "tnsname": "",
-        "connectiontype": "Classic",
-        "instantclientpath": "",
-        "host": "oracle.fiap.com.br",
-        "port": 1521,
-        "db": "orcl",
-        "poolmin": "",
-        "poolmax": 4,
-        "pooltimeout": 60
-    },
-    {
-        "id": "4b69885e5e7a323a",
-        "type": "tls-config",
-        "name": "",
-        "cert": "",
-        "key": "",
-        "ca": "",
-        "certname": "",
-        "keyname": "",
-        "caname": "",
-        "servername": "",
-        "verifyservercert": true,
-        "alpnprotocol": ""
+        "id": "b3a1c2d4e5f60006",
+        "type": "ui_group",
+        "name": "Triagem da IA",
+        "tab": "bc832aabcd78d697",
+        "order": 2,
+        "disp": true,
+        "width": 10,
+        "collapse": false,
+        "className": ""
     },
     {
         "id": "bc832aabcd78d697",
@@ -279,8 +360,7 @@
         "type": "global-config",
         "env": [],
         "modules": {
-            "node-red-dashboard": "3.6.6",
-            "node-red-contrib-oracledb-mod": "0.7.6"
+            "node-red-dashboard": "3.6.6"
         }
     }
 ]
