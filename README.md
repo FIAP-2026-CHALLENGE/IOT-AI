@@ -373,7 +373,7 @@ A foto enviada fica registrada no relato, e o Gemini descreve só o que é visí
 
 ## 13. Vídeos
 
-- Sprint 4 (implementação): `<inserir link do YouTube>`
+- Sprint 4 (implementação): https://youtu.be/bJMDUmy8fdo
 - Sprint 1 (balança no Wokwi e Node-RED): https://youtu.be/CoorQwypCCo
 
 <details>
